@@ -1,3 +1,7 @@
+
+create SCHEMA healthcheck AUTHORIZATION poc;
+
+
 -- RedShift HealthCheck ToolKit
 -- Version 1.0
 -- Developed by Searce Data team
@@ -7,10 +11,10 @@
 SET enable_result_cache_for_session = OFF;
 
 -- Drop the temp table for storing the checklist results
-DROP TABLE IF EXISTS rstk_metric_result;
+DROP TABLE IF EXISTS healthcheck.rstk_metric_result;
 
 -- Create temp table for storing the checklist results
-create temp table rstk_metric_result 
+create table healthcheck.rstk_metric_result 
   ( 
      priority int,
      category varchar(50),
@@ -22,7 +26,7 @@ create temp table rstk_metric_result
   ); 
 
 -- Insert information row
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
 VALUES      (0, 
              current_timestamp, 
              'RedShift HealthCheck ToolKit', 
@@ -32,7 +36,7 @@ VALUES      (0,
 			 NULL); 
 
 -- Tables without sort keys
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -48,7 +52,7 @@ WHERE  sortkey1 IS NULL
 	   AND "schema" not like 'pg_temp%'; 
 
 -- Sort key column compressed
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -65,7 +69,7 @@ WHERE  sortkey1 IS NOT NULL
        AND "schema" not like 'pg_temp%'; 
 
 -- Sort key skew > 4
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -82,7 +86,7 @@ WHERE  sortkey1 IS NOT NULL
        AND "schema" not like 'pg_temp%'; 
 
 -- Tables with high Skew
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -99,7 +103,7 @@ WHERE  diststyle LIKE 'KEY%'
        AND "schema" not like 'pg_temp%';  
 
 -- Tables without compression
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -115,7 +119,7 @@ WHERE  encoded <> 'Y'
 	   AND "schema" not like 'pg_temp%'; 
 
 -- WLM queue wait time > 1min
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -132,7 +136,7 @@ WHERE  w.total_queue_time / 1000000 > 60;
 -- WLM max connection hit
 -- Credit: This query is taken from AWS RedShit Utilities with some changes to boost up performance on single node cluster.
 -- Script name: wlm_apex_hourly
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -208,7 +212,7 @@ FROM   final_result
 WHERE  service_class >=6;
 
 -- Number of WLM queue
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -223,7 +227,7 @@ FROM   stv_wlm_service_class_config
 WHERE  service_class BETWEEN 6 and 13; 
 
 -- Auto WLM enabled
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -238,7 +242,7 @@ FROM   stv_wlm_service_class_config
 WHERE  service_class >= 100; 
 
 -- Max concurrency for a slot
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -253,7 +257,7 @@ FROM   stv_wlm_service_class_config
 WHERE  service_class BETWEEN 6 AND 13; 
 
 -- WLM commit queue wait 
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             ( 
                         checkid, 
                         category, 
@@ -272,7 +276,7 @@ FROM   (SELECT Datediff(seconds, startqueue, startwork) AS queue_time
         ORDER  BY queue_time DESC); 
 
 -- Ghost rows
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -315,7 +319,7 @@ SELECT 12,
 FROM   final_cte; 
 
 -- Tables never performed vacuum (based on STL_Vacuum)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -331,7 +335,7 @@ SELECT 13,
                                 FROM   stl_vacuum); 
 
 -- Table vacuum older than 5 days
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             ( 
                         checkid, 
                         category, 
@@ -358,7 +362,7 @@ INSERT INTO rstk_metric_result
    WHERE  cte.eventtime1>= current_date - interval '5 day';
 
 -- Tables with tombstone blocks
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -385,7 +389,7 @@ SELECT 15,
 FROM   cte;  
 
 -- Tables with missing stats
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -403,7 +407,7 @@ FROM   (SELECT plannode
         GROUP  BY plannode); 
 
 -- Tables with stale stats (> 5 percent)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -419,7 +423,7 @@ WHERE  stats_off > 5;
 
 
 -- Top sized tables 
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -434,7 +438,7 @@ FROM   pg_catalog.svv_table_info
 WHERE  pct_used >= 40; 
 
 -- Table with high number of alerts (>3 alerts)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -464,7 +468,7 @@ FROM   (SELECT "table",
 WHERE  count >= 3; 
 
 -- Non scaned Tables (based on STL Scan)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -480,7 +484,7 @@ WHERE  "table" NOT IN (SELECT DISTINCT ( perm_table_name )
                        FROM   pg_catalog.stl_scan); 
 
 -- Tables without backup
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -497,7 +501,7 @@ WHERE  BACKUP = 0 and temp=0;
 -- Tables with fragmentation
 -- Credit: This query is taken from AWS RedShit Utilities
 -- Script name: v_fragmentation_info.sql
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             ( 
                         checkid, 
                         category, 
@@ -579,7 +583,7 @@ FROM   (
         ORDER  BY 4 DESC);
 
 -- Disk based queries
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -596,7 +600,7 @@ FROM   (SELECT query
         GROUP  BY query); 
 
 -- COPY not optimized 
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -617,7 +621,7 @@ WHERE  n_files % (SELECT Count(slice)
                   FROM   stv_slices) != 0; 
 
 -- High CPU queries (>80 Percent)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -642,7 +646,7 @@ WHERE  query_execution_time > 60
 GROUP  BY query ); 
 
 -- Most frequent Alert (> 500 times)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -660,7 +664,7 @@ FROM   (SELECT Trim(Split_part(event, ':', 1)) AS event,
 WHERE  count > 500; 
 
 -- Long running queries (> 30mins)
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -675,7 +679,7 @@ FROM   svl_query_metrics
 WHERE  query_execution_time >= 1800; 
 
 -- Max temp space used by queries
-INSERT INTO rstk_metric_result 
+INSERT INTO healthcheck.rstk_metric_result 
             (checkid, 
              category, 
              finding, 
@@ -697,7 +701,7 @@ FROM   (SELECT SUM(( bytes ) / 1024 / 1024 / 1024) AS GigaBytes
 -- Adding the description and priority
 -- -------------------------------------
 -- Tables without sort keys
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -713,12 +717,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 10 THEN 2 
   WHEN Cast(value AS INT) =0 then 3
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 1) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Sort key column compressed
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -734,12 +738,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 10 THEN 2 
   WHEN Cast(value AS INT) =0 then 3
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 2) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Sort key skew > 4
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -754,12 +758,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 10 THEN 2 
   WHEN Cast(value AS INT) =0 then 3
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 3) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables with high Skew
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -774,12 +778,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 10 THEN 2 
   WHEN Cast(value AS INT) = 0 then 3
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 4) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables without compression
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -794,12 +798,12 @@ FROM   (SELECT checkid,
                  WHEN Cast(value AS INT) BETWEEN 1 AND 10 THEN 2 
                  WHEN Cast(value AS INT) =0 then 3
                END AS priority 
-        FROM   rstk_metric_result 
+        FROM   healthcheck.rstk_metric_result 
         WHERE  checkid = 5) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- WLM queue wait time > 1min
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -817,12 +821,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 180 AND 900 THEN 2 
   WHEN Cast(value AS INT) < 180 then 3
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 6) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- WLM max connection hit
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -841,12 +845,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 100 AND 300 THEN 2 
   WHEN Cast(value AS INT) < 100 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 7) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Number of WLM queue
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -869,12 +873,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 3 AND 7 THEN 2 
   WHEN Cast(value AS INT) BETWEEN 2 AND 3 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 8) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Auto WLM enabled
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -889,12 +893,12 @@ CASE
   WHEN Cast(value AS INT) = 0 THEN 2 
   WHEN Cast(value AS INT) > 0 THEN 2 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 9) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Max concurrency for a slot
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -919,12 +923,12 @@ CASE
   WHEN Cast(value AS INT)BETWEEN 10 AND 20 THEN 2 
   WHEN Cast(value AS INT) < 10 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 10) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- WLM commit queue wait 
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -949,12 +953,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 60 AND 120 THEN 2 
   WHEN Cast(value AS INT) < 60 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 11) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Ghost rows
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -974,12 +978,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1000 AND 100000 THEN 2 
   WHEN Cast(value AS INT) < 1000 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 12) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables never performed vacuum (based on STL_Vacuum)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -996,12 +1000,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 13) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Table vacuum older than 5 days
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1018,12 +1022,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 5 AND 10 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 14) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables with tombstone blocks
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1040,12 +1044,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 15) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables with missing stats
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1065,12 +1069,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 16) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables with stale stats (> 5 percent)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1090,12 +1094,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 17) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Top sized tables
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1113,12 +1117,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 2 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 18) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Table with high number of alerts (>3 alerts)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1136,12 +1140,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 19) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Non scaned Tables (based on STL Scan)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1158,12 +1162,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 20) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables without backup
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1182,12 +1186,12 @@ CASE
   WHEN Cast(value AS INT) > 0 THEN 1 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 21) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Tables with fragmentation
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1205,12 +1209,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
-FROM   rstk_metric_result 
+FROM   healthcheck.rstk_metric_result 
 WHERE  checkid = 22) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Disk based queries
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1232,12 +1236,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 300 AND 500 THEN 2 
   WHEN Cast(value AS INT) < 300 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 23) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- COPY not optimized 
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1258,12 +1262,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 1 AND 5 THEN 2 
   WHEN Cast(value AS INT) = 0 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 24) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- High CPU queries (>80 Percent)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1285,12 +1289,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 5 AND 10 THEN 2 
   WHEN Cast(value AS INT) < 5 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 25) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Most frequent Alert (> 500 times)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 from   ( 
@@ -1314,12 +1318,12 @@ from   (
                             WHEN cast(count AS INT) BETWEEN 5 AND    10 THEN 2 
                             WHEN cast(count AS INT) < 5 THEN 3 
                      END AS priority 
-              FROM   rstk_metric_result 
+              FROM   healthcheck.rstk_metric_result 
               WHERE  checkid = 26) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- 	Long running queries (> 30mins)
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1341,12 +1345,12 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 300 AND 100 THEN 2 
   WHEN Cast(value AS INT) < 100 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 27) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Max temp space used by queries
-UPDATE rstk_metric_result 
+UPDATE healthcheck.rstk_metric_result 
 SET    details = sq.details, 
        priority = sq.priority 
 FROM   (SELECT checkid, 
@@ -1369,9 +1373,9 @@ CASE
   WHEN Cast(value AS INT) BETWEEN 5 AND 10 THEN 2 
   WHEN Cast(value AS INT) < 5 THEN 3 
 END AS priority 
- FROM   rstk_metric_result 
+ FROM   healthcheck.rstk_metric_result 
  WHERE  checkid = 28) sq 
-WHERE  rstk_metric_result.checkid = sq.checkid; 
+WHERE  healthcheck.rstk_metric_result.checkid = sq.checkid; 
 
 -- Show the result:
 SELECT CASE 
@@ -1385,5 +1389,5 @@ SELECT CASE
        finding, 
        details, 
        url 
-FROM   rstk_metric_result 
+FROM   healthcheck.rstk_metric_result 
 ORDER  BY priority; 
